@@ -1,5 +1,5 @@
 /* ============================================================
-   RMRP LAW — скрипт портала (v1.0, стабильный)
+   RMRP LAW — script.js v2 (надёжные модалки)
    ============================================================ */
 
 (function () {
@@ -16,24 +16,21 @@
   function $$(s, c) { return Array.prototype.slice.call((c || document).querySelectorAll(s)); }
 
   function onReady(fn) {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', fn);
-    } else {
-      fn();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+    else fn();
   }
 
   onReady(function () {
     console.log('[RMRP] script.js loaded');
 
-    try { initPageSwitch(); } catch(e){ console.warn('pageSwitch', e); }
+    try { initModals(); } catch(e){ console.warn('modals', e); }
     try { initAccordion(); } catch(e){ console.warn('accordion', e); }
     try { initBurger(); } catch(e){ console.warn('burger', e); }
     try { initSearch(); } catch(e){ console.warn('search', e); }
     try { initToTop(); } catch(e){ console.warn('toTop', e); }
-    try { initModals(); } catch(e){ console.warn('modals', e); }
-    try { initBgTabs(); } catch(e){ console.warn('bgTabs', e); }
+    try { initPageSwitch(); } catch(e){ console.warn('pageSwitch', e); }
     try { initSliders(); } catch(e){ console.warn('sliders', e); }
+    try { initBgTabs(); } catch(e){ console.warn('bgTabs', e); }
     try { initEditor(); } catch(e){ console.warn('editor', e); }
     try { initBgActions(); } catch(e){ console.warn('bgActions', e); }
     try { initExport(); } catch(e){ console.warn('export', e); }
@@ -45,67 +42,56 @@
   });
 
   /* ============================================================
-     1. ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ
+     МОДАЛКИ — закрываются 4 способами:
+     1. Кнопка .modal-close / #closeEditor / #closeBgPicker
+     2. Кнопка .btn-ghost / #cancelEditor в футере модалки
+     3. Клик по тёмному фону (сам .modal-overlay)
+     4. Клавиша Escape
      ============================================================ */
-  function switchPage(page) {
-    var pageLaw = $('#page-law');
-    var pageVk = $('#page-vk');
-    if (!pageLaw || !pageVk) return;
+  function openModal(m) { if (m) m.hidden = false; }
+  function closeModal(m) { if (m) m.hidden = true; }
 
-    if (page === 'vk') {
-      pageLaw.style.display = 'none';
-      pageVk.style.display = 'block';
-      pageVk.classList.add('page-active');
-      pageLaw.classList.remove('page-active');
-      localStorage.setItem(LS.page, 'vk');
-    } else {
-      pageVk.style.display = 'none';
-      pageLaw.style.display = 'block';
-      pageLaw.classList.add('page-active');
-      pageVk.classList.remove('page-active');
-      localStorage.setItem(LS.page, 'law');
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  function closeAllModals() {
+    $$('.modal-overlay').forEach(function (m) { m.hidden = true; });
   }
 
-  function initPageSwitch() {
-    var switchBtn = $('#switchPage');
-    var btnText = $('.btn-page-text');
-    var btnIcon = $('.btn-page-icon');
+  function initModals() {
+    // Открытие
+    var openEditor = $('#openEditor');
+    var openBg = $('#openBgPicker');
 
-    function updateBtn() {
-      var page = localStorage.getItem(LS.page) || 'law';
-      if (btnText) btnText.textContent = page === 'vk' ? 'Законы' : 'Военкомат';
-      if (btnIcon) btnIcon.textContent = page === 'vk' ? '⚖️' : '🎓';
-    }
+    if (openEditor) openEditor.addEventListener('click', function () { openModal($('#editorModal')); });
+    if (openBg) openBg.addEventListener('click', function () { openModal($('#bgModal')); });
 
-    if (switchBtn) {
-      switchBtn.addEventListener('click', function () {
-        var current = localStorage.getItem(LS.page) || 'law';
-        switchPage(current === 'vk' ? 'law' : 'vk');
-        updateBtn();
-      });
-    }
+    // Делегирование: любые клики внутри модалок ловим здесь
+    document.addEventListener('click', function (e) {
+      var target = e.target;
 
-    $$('.vk-link').forEach(function (link) {
-      link.addEventListener('click', function (e) {
-        e.preventDefault();
-        switchPage('vk');
-        updateBtn();
-        var nav = $('#nav'); if (nav) nav.classList.remove('open');
-      });
+      // Кнопки закрытия (крестик)
+      if (target.closest('.modal-close')) {
+        closeAllModals();
+        return;
+      }
+      // Кнопки «Отмена» / «Убрать»
+      if (target.closest('#cancelEditor, #removeBg, #closeEditor, #closeBgPicker')) {
+        closeAllModals();
+        return;
+      }
+      // Клик по тёмному фону — закрываем
+      if (target.classList.contains('modal-overlay')) {
+        target.hidden = true;
+        return;
+      }
     });
 
-    updateBtn();
-  }
-
-  function restorePage() {
-    var page = localStorage.getItem(LS.page) || 'law';
-    if (page === 'vk') switchPage('vk');
+    // Escape закрывает всё
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeAllModals();
+    });
   }
 
   /* ============================================================
-     2. АККОРДЕОН
+     АККОРДЕОН
      ============================================================ */
   function initAccordion() {
     var headers = $$('.acc-header');
@@ -117,31 +103,27 @@
         if (!item) return;
         var acc = item.closest('.accordion');
         var isOpen = item.classList.contains('open');
-        if (acc) {
-          $$('.acc-item.open', acc).forEach(function (i) { i.classList.remove('open'); });
-        }
+        if (acc) $$('.acc-item.open', acc).forEach(function (i) { i.classList.remove('open'); });
         if (!isOpen) item.classList.add('open');
       });
     });
   }
 
   /* ============================================================
-     3. БУРГЕР
+     БУРГЕР
      ============================================================ */
   function initBurger() {
     var burger = $('#burger');
     var nav = $('#nav');
     if (!burger || !nav) return;
-    burger.addEventListener('click', function () {
-      nav.classList.toggle('open');
-    });
+    burger.addEventListener('click', function () { nav.classList.toggle('open'); });
     $$('.nav-link', nav).forEach(function (a) {
       a.addEventListener('click', function () { nav.classList.remove('open'); });
     });
   }
 
   /* ============================================================
-     4. ПОИСК
+     ПОИСК
      ============================================================ */
   var globalBox = null;
 
@@ -154,14 +136,14 @@
     if (!query) return [];
     var results = [];
     $$('#page-law section.section').forEach(function (sec) {
-      var secTitleEl = $('.section-title', sec);
-      var secTitle = secTitleEl ? secTitleEl.textContent : '';
+      var titleEl = $('.section-title', sec);
+      var secTitle = titleEl ? titleEl.textContent : '';
       var secId = sec.id;
       $$('.acc-item', sec).forEach(function (item, idx) {
-        var titleEl = $('.acc-title', item);
-        var textEl = $('.acc-text', item);
-        var title = titleEl ? titleEl.textContent : '';
-        var text = textEl ? textEl.textContent : '';
+        var tEl = $('.acc-title', item);
+        var xEl = $('.acc-text', item);
+        var title = tEl ? tEl.textContent : '';
+        var text = xEl ? xEl.textContent : '';
         if (text.toLowerCase().indexOf(query) !== -1 || title.toLowerCase().indexOf(query) !== -1) {
           var i = text.toLowerCase().indexOf(query);
           var start = Math.max(0, i - 60);
@@ -235,7 +217,7 @@
   }
 
   /* ============================================================
-     5. КНОПКА «НАВЕРХ»
+     КНОПКА «НАВЕРХ»
      ============================================================ */
   function initToTop() {
     var toTop = $('#toTop');
@@ -249,37 +231,80 @@
   }
 
   /* ============================================================
-     6. МОДАЛКИ
+     ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ
      ============================================================ */
-  function openModal(m) { if (m) m.hidden = false; }
-  function closeModal(m) { if (m) m.hidden = true; }
+  function switchPage(page) {
+    var pageLaw = $('#page-law');
+    var pageVk = $('#page-vk');
+    if (!pageLaw || !pageVk) return;
+    if (page === 'vk') {
+      pageLaw.style.display = 'none';
+      pageVk.style.display = 'block';
+      pageVk.classList.add('page-active');
+      pageLaw.classList.remove('page-active');
+      localStorage.setItem(LS.page, 'vk');
+    } else {
+      pageVk.style.display = 'none';
+      pageLaw.style.display = 'block';
+      pageLaw.classList.add('page-active');
+      pageVk.classList.remove('page-active');
+      localStorage.setItem(LS.page, 'law');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
-  function initModals() {
-    var editorModal = $('#editorModal');
-    var bgModal = $('#bgModal');
+  function initPageSwitch() {
+    var switchBtn = $('#switchPage');
+    var btnText = $('.btn-page-text');
+    var btnIcon = $('.btn-page-icon');
 
-    var openEditor = $('#openEditor');
-    var openBg = $('#openBgPicker');
-    var closeEditor = $('#closeEditor');
-    var closeBg = $('#closeBgPicker');
-    var cancelEditor = $('#cancelEditor');
+    function updateBtn() {
+      var page = localStorage.getItem(LS.page) || 'law';
+      if (btnText) btnText.textContent = page === 'vk' ? 'Законы' : 'Военкомат';
+      if (btnIcon) btnIcon.textContent = page === 'vk' ? '⚖️' : '🎓';
+    }
 
-    if (openEditor) openEditor.addEventListener('click', function () { openModal(editorModal); });
-    if (openBg) openBg.addEventListener('click', function () { openModal(bgModal); });
-    if (closeEditor) closeEditor.addEventListener('click', function () { closeModal(editorModal); });
-    if (cancelEditor) cancelEditor.addEventListener('click', function () { closeModal(editorModal); });
-    if (closeBg) closeBg.addEventListener('click', function () { closeModal(bgModal); });
+    if (switchBtn) {
+      switchBtn.addEventListener('click', function () {
+        var current = localStorage.getItem(LS.page) || 'law';
+        switchPage(current === 'vk' ? 'law' : 'vk');
+        updateBtn();
+      });
+    }
 
-    [editorModal, bgModal].forEach(function (m) {
-      if (!m) return;
-      m.addEventListener('click', function (e) {
-        if (e.target === m) m.hidden = true;
+    $$('.vk-link').forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        switchPage('vk');
+        updateBtn();
+        var nav = $('#nav'); if (nav) nav.classList.remove('open');
       });
     });
+
+    updateBtn();
+  }
+
+  function restorePage() {
+    var page = localStorage.getItem(LS.page) || 'law';
+    if (page === 'vk') switchPage('vk');
   }
 
   /* ============================================================
-     7. ТАБЫ ФОНА
+     СЛАЙДЕРЫ
+     ============================================================ */
+  function initSliders() {
+    function bind(id, outId, sfx) {
+      var el = $('#' + id);
+      var o = $('#' + outId);
+      if (el && o) el.addEventListener('input', function () { o.textContent = el.value + sfx; });
+    }
+    bind('bgOverlay', 'bgOverlayValue', '%');
+    bind('bgBlur', 'bgBlurValue', 'px');
+    bind('bgVolume', 'bgVolumeValue', '%');
+  }
+
+  /* ============================================================
+     ТАБЫ ФОНА
      ============================================================ */
   function initBgTabs() {
     $$('.bg-tab').forEach(function (tab) {
@@ -294,21 +319,7 @@
   }
 
   /* ============================================================
-     8. СЛАЙДЕРЫ
-     ============================================================ */
-  function initSliders() {
-    function bind(id, outId, sfx) {
-      var el = $('#' + id);
-      var o = $('#' + outId);
-      if (el && o) el.addEventListener('input', function () { o.textContent = el.value + sfx; });
-    }
-    bind('bgOverlay', 'bgOverlayValue', '%');
-    bind('bgBlur', 'bgBlurValue', 'px');
-    bind('bgVolume', 'bgVolumeValue', '%');
-  }
-
-  /* ============================================================
-     9. РЕДАКТОР ЗАКОНОВ
+     РЕДАКТОР ЗАКОНОВ
      ============================================================ */
   function initEditor() {
     var saveBtn = $('#saveEditor');
@@ -324,7 +335,7 @@
       laws[cat].push({ id: Date.now(), tag: tag, title: title, text: text });
       localStorage.setItem(LS.laws, JSON.stringify(laws));
       renderLaws(cat);
-      closeModal($('#editorModal'));
+      closeAllModals();
       $('#lawTitle').value = '';
       $('#lawTag').value = '';
       $('#editorArea').innerHTML = '';
@@ -353,11 +364,12 @@
   }
 
   function restoreLaws() {
-    ['constitution', 'uk', 'koap', 'process', 'raids', 'vzk', 'discipline', 'custom'].forEach(renderLaws);
+    ['constitution', 'uk', 'koap', 'process', 'weapons', 'property', 'raids', 'vzk',
+     'discipline', 'garrison', 'internal', 'drill', 'custom'].forEach(renderLaws);
   }
 
   /* ============================================================
-     10. ФОН / МУЗЫКА
+     ФОН / МУЗЫКА
      ============================================================ */
   function extractYT(url) {
     var m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|v\/))([\w-]{11})/);
@@ -395,33 +407,38 @@
           if (url) applyBg(url, overlay, blur);
         } else if (activeTab === 'youtube') {
           var ytUrl = $('#bgYoutubeInput').value.trim();
-          var id = extractYT(ytUrl);
-          if (id) {
+          var ytId = extractYT(ytUrl);
+          if (ytId) {
             var style = document.getElementById('dynamic-bg-styles') || document.createElement('style');
             style.id = 'dynamic-bg-styles';
             if (!style.parentNode) document.head.appendChild(style);
             style.textContent = 'body::after{content:"";position:fixed;inset:0;z-index:-1;background:rgba(10,11,15,' + overlay + ');}';
+            $$('.yt-bg-frame').forEach(function (el) { el.remove(); });
+            var wrap = document.createElement('div');
+            wrap.className = 'yt-bg-frame';
+            wrap.style.cssText = 'position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden;filter:blur(' + blur + 'px);';
+            wrap.innerHTML = '<iframe src="https://www.youtube.com/embed/' + ytId + '?autoplay=1&mute=1&controls=0&loop=1&playlist=' + ytId + '&showinfo=0&rel=0" style="position:absolute;top:50%;left:50%;width:177.78vh;height:56.25vw;min-width:100%;min-height:100%;transform:translate(-50%,-50%);border:0;" allow="autoplay; encrypted-media" allowfullscreen></iframe>';
+            document.body.appendChild(wrap);
           }
-        } else if (activeTab === 'music') {
-          var mUrl = $('#bgMusicInput').value.trim();
-          var volEl = $('#bgVolume');
-          var vol = (volEl ? volEl.value : 50) / 100;
-          var mId = extractYT(mUrl);
-          if (mId) {
-            localStorage.setItem(LS.music, JSON.stringify({ id: mId, vol: vol }));
+        } else if (activeTab === 'file') {
+          var file = $('#bgFileInput').files[0];
+          if (file) {
+            var reader = new FileReader();
+            reader.onload = function (ev) { applyBg(ev.target.result, overlay, blur); };
+            reader.readAsDataURL(file);
           }
         }
-        closeModal($('#bgModal'));
+        closeAllModals();
       });
     }
 
     if (removeBg) {
       removeBg.addEventListener('click', function () {
         localStorage.removeItem(LS.bg);
-        localStorage.removeItem(LS.music);
         var style = document.getElementById('dynamic-bg-styles');
         if (style) style.textContent = '';
-        closeModal($('#bgModal'));
+        $$('.yt-bg-frame').forEach(function (el) { el.remove(); });
+        closeAllModals();
       });
     }
   }
@@ -434,15 +451,14 @@
   }
 
   /* ============================================================
-     11. ЭКСПОРТ / ИМПОРТ
+     ЭКСПОРТ / ИМПОРТ
      ============================================================ */
   function initExport() {
     window.RMRP = {
       export: function () {
         var data = {
           laws: JSON.parse(localStorage.getItem(LS.laws) || '{}'),
-          bg: localStorage.getItem(LS.bg),
-          music: localStorage.getItem(LS.music)
+          bg: localStorage.getItem(LS.bg)
         };
         var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         var a = document.createElement('a');
@@ -458,8 +474,7 @@
             var data = JSON.parse(e.target.result);
             if (data.laws) localStorage.setItem(LS.laws, JSON.stringify(data.laws));
             if (data.bg) localStorage.setItem(LS.bg, data.bg);
-            if (data.music) localStorage.setItem(LS.music, data.music);
-            alert('Импорт выполнен. Перезагружаю…');
+            alert('Импорт выполнен.');
             location.reload();
           } catch (err) { alert('Ошибка: ' + err.message); }
         };
